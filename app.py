@@ -20,20 +20,6 @@ if not TOKEN or not ACCOUNT_ID:
 
 # 模型列表
 MODELS = {
-    "Llama 4 Scout": "@cf/meta/llama-4-scout-17b-16e-instruct",
-    "Llama 3.3 70B": "@cf/meta/llama-3.3-70b-instruct",
-    "Llama 3.3 70B Fast": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
-    "Llama 3.2 11B Vision": "@cf/meta/llama-3.2-11b-vision-instruct",
-    "Llama 3.2 3B": "@cf/meta/llama-3.2-3b-instruct",
-    "Llama 3.2 1B": "@cf/meta/llama-3.2-1b-instruct",
-    "Llama 3.1 8B": "@cf/meta/llama-3.1-8b-instruct",
-    "Llama 3.1 8B AWQ": "@cf/meta/llama-3.1-8b-instruct-awq",
-    "Llama 3.1 8B FP8": "@cf/meta/llama-3.1-8b-instruct-fp8",
-    "Llama 3 8B": "@cf/meta/llama-3-8b-instruct",
-    "Llama 3 8B AWQ": "@cf/meta/llama-3-8b-instruct-awq",
-    "Llama 2 7B FP16": "@cf/meta/llama-2-7b-chat-fp16",
-    "Llama 2 7B INT8": "@cf/meta/llama-2-7b-chat-int8",
-    "Llama Guard 3 8B": "@cf/meta/llama-guard-3-8b",
     "Kimi K2.5": "@cf/moonshotai/kimi-k2.5",
     "GPT-OSS 20B": "@cf/openai/gpt-oss-20b",
     "GPT-OSS 120B": "@cf/openai/gpt-oss-120b",
@@ -42,49 +28,97 @@ MODELS = {
     "Gemma 2B": "@cf/google/gemma-2b-it-lora",
     "Gemma 7B HF": "@hf/google/gemma-7b-it",
     "Qwen3 30B": "@cf/qwen/qwen3-30b-a3b-fp8",
-    "Qwen3 Embedding": "@cf/qwen/qwen3-embedding-0.6b",
     "Qwen QWQ 32B": "@cf/qwen/qwq-32b",
     "Qwen2.5 Coder 32B": "@cf/qwen/qwen2.5-coder-32b-instruct",
     "Qwen1.5 14B": "@cf/qwen/qwen1.5-14b-chat-awq",
     "DeepSeek R1": "@cf/deepseek-ai/deepseek-r1-distill-qwen-32b",
-    "Mistral 7B": "@cf/mistral/mistral-7b-instruct-v0.2",
-    "Phi-2": "@cf/microsoft/phi-2",
-    "TinyLlama": "@cf/tinyllama/tinyllama-1.1b-chat-v1.0",
-    "Llama-2-7B LoRA": "@cf/meta-llama/llama-2-7b-chat-hf-lora",
-    "GLM-4.7 Flash": "@cf/zai-org/glm-4.7-flash"
+    "GLM-4.7 Flash": "@cf/zai-org/glm-4.7-flash",
 }
 
-# 检测是否需要 system 角色
 def needs_system_role(model_id):
-    """检查模型是否需要 system 角色（Llama/Mistral/DeepSeek/Qwen3 不需要）"""
     lower = model_id.lower()
     no_system = ["llama", "mistral", "deepseek", "qwen3", "qwq", "tinyllama", "phi"]
     return not any(x in lower for x in no_system)
 
-# ========== Session State ==========
+# ========== 文件上传功能 ==========
+def process_file(uploaded_file):
+    """处理上传的文件"""
+    if uploaded_file is None:
+        return None, None
+    
+    filename = uploaded_file.name
+    ext = os.path.splitext(filename)[1].lower()
+    
+    # 代码文件类型映射
+    code_types = {".py": "Python", ".js": "JavaScript", ".ts": "TypeScript", 
+                  ".html": "HTML", ".css": "CSS", ".java": "Java", 
+                  ".cpp": "C++", ".c": "C", ".go": "Go", ".rs": "Rust",
+                  ".php": "PHP", ".swift": "Swift", ".kt": "Kotlin",
+                  ".rb": "Ruby", ".sql": "SQL", ".json": "JSON",
+                  ".xml": "XML", ".yaml": "YAML", ".yml": "YAML",
+                  ".md": "Markdown", ".txt": "Text", ".csv": "CSV"}
+    
+    try:
+        content = uploaded_file.read().decode("utf-8")
+    except UnicodeDecodeError:
+        try:
+            uploaded_file.seek(0)
+            content = uploaded_file.read().decode("gbk")
+        except:
+            return None, "文件编码错误，请上传 UTF-8 或 GBK 编码的文件"
+    
+    file_type = code_types.get(ext, "Text")
+    
+    return {
+        "name": filename,
+        "ext": ext,
+        "type": file_type,
+        "content": content,
+        "size": len(content)
+    }, None
+
+def format_file_message(file_info, user_text=""):
+    """格式化文件内容为消息"""
+    name = file_info["name"]
+    content = file_info["content"]
+    ftype = file_info["type"]
+    ext = file_info["ext"]
+    
+    # 截断长内容（限制 6000 字符约 1500 tokens）
+    max_len = 6000
+    if len(content) > max_len:
+        content = content[:max_len] + f"\n\n... [已截断，共 {len(file_info['content'])} 字符]"
+    
+    # 构建提示
+    lang = ext.replace(".", "") if ext else "text"
+    prompt = f"我上传了一个 {ftype} 文件 `{name}`，内容如下：\n\n"
+    prompt += f"```{lang}\n{content}\n```\n\n"
+    
+    if user_text:
+        prompt += f"问题：{user_text}"
+    else:
+        prompt += "请分析这个文件的内容和结构。"
+    
+    return prompt
+
+# ========== Session ==========
 def init_session():
     if "sessions" not in st.session_state:
         st.session_state.sessions = {}
     if "current_id" not in st.session_state:
         st.session_state.current_id = None
-
+    if "pending_file" not in st.session_state:
+        st.session_state.pending_file = None
+    
     if not st.session_state.sessions:
         create_session("默认会话")
 
-def create_session(name, model="Llama 3.3 70B"):
+def create_session(name, model="Kimi K2.5"):
     sid = str(uuid.uuid4())[:8]
     model_id = MODELS[model]
-
-    # 关键：根据模型决定是否添加 system 角色
-    if needs_system_role(model_id):
-        messages = [{"role": "system", "content": "你是一个智能助手"}]
-    else:
-        messages = []
-
+    messages = [{"role": "system", "content": "你是智能助手"}] if needs_system_role(model_id) else []
     st.session_state.sessions[sid] = {
-        "id": sid,
-        "name": name,
-        "model": model,
+        "id": sid, "name": name, "model": model,
         "messages": messages,
         "created_at": datetime.now().isoformat(),
         "updated_at": datetime.now().isoformat()
@@ -103,26 +137,18 @@ def get_session():
     return None
 
 def switch_model(sid, new_model):
-    """切换模型，必要时重置消息格式"""
-    if sid not in st.session_state.sessions:
-        return
-
+    if sid not in st.session_state.sessions: return
     session = st.session_state.sessions[sid]
-    old_model_id = MODELS[session["model"]]
-    new_model_id = MODELS[new_model]
-
-    old_needs_system = needs_system_role(old_model_id)
-    new_needs_system = needs_system_role(new_model_id)
-
+    old_id = MODELS[session["model"]]
+    new_id = MODELS[new_model]
+    
+    old_sys = needs_system_role(old_id)
+    new_sys = needs_system_role(new_id)
+    
     session["model"] = new_model
-
-    # 如果 system 角色需求变化，重置消息
-    if old_needs_system != new_needs_system:
-        if new_needs_system:
-            session["messages"] = [{"role": "system", "content": "你是一个智能助手"}]
-        else:
-            session["messages"] = []
-        session["updated_at"] = datetime.now().isoformat()
+    if old_sys != new_sys:
+        session["messages"] = [{"role": "system", "content": "你是智能助手"}] if new_sys else []
+    session["updated_at"] = datetime.now().isoformat()
 
 def delete_session(sid):
     if sid in st.session_state.sessions:
@@ -138,64 +164,36 @@ def rename_session(sid, new_name):
         st.session_state.sessions[sid]["name"] = new_name
         st.session_state.sessions[sid]["updated_at"] = datetime.now().isoformat()
 
-# ========== API 调用 ==========
+# ========== API ==========
 def get_api_url(model_id):
     return f"https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai/run/{model_id}"
 
 def extract_response(result):
-    if not result or not result.get("success"):
-        return None
+    if not result or not result.get("success"): return None
+    data = result.get("result", {})
+    if isinstance(data, dict):
+        if "response" in data: return data["response"]
+        if "choices" in data and data["choices"]:
+            return data["choices"][0].get("message", {}).get("content")
+    return str(data)
 
-    result_data = result.get("result", {})
-
-    # 格式 1: result.response
-    if isinstance(result_data, dict) and "response" in result_data:
-        return result_data["response"]
-
-    # 格式 2: OpenAI 格式 choices[0].message.content
-    if isinstance(result_data, dict) and "choices" in result_data:
-        choices = result_data["choices"]
-        if choices and len(choices) > 0:
-            msg = choices[0].get("message", {})
-            return msg.get("content")
-
-    # 格式 3: 直接字符串
-    if isinstance(result_data, str):
-        return result_data
-
-    return str(result_data)
-
-def call_api(session, user_input):
-    """调用 API，处理 Llama 等特殊格式"""
+def call_api(session, text):
     try:
         model_id = MODELS[session["model"]]
         url = get_api_url(model_id)
-
-        # 添加用户消息
-        session["messages"].append({"role": "user", "content": user_input})
+        
+        session["messages"].append({"role": "user", "content": text})
         session["updated_at"] = datetime.now().isoformat()
-
-        # 构建请求体
-        payload = {"messages": session["messages"]}
-
-        # 调试信息
-        # st.write(f"调试 - 发送消息数: {len(session['messages'])}")
-
-        data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-
+        
+        data = json.dumps({"messages": session["messages"]}).encode()
         req = urllib.request.Request(
-            url,
-            data=data,
-            headers={
-                "Authorization": f"Bearer {TOKEN}",
-                "Content-Type": "application/json"
-            },
+            url, data=data,
+            headers={"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"},
             method="POST"
         )
-
-        with urllib.request.urlopen(req, timeout=60) as response:
-            result = json.loads(response.read().decode("utf-8"))
-
+        
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            result = json.loads(resp.read().decode())
             if result.get("success"):
                 reply = extract_response(result)
                 if reply:
@@ -204,100 +202,45 @@ def call_api(session, user_input):
                     return reply, None
                 else:
                     session["messages"].pop()
-                    return None, "无法解析响应"
+                    return None, "解析失败"
             else:
                 session["messages"].pop()
-                error = result.get("errors", [{}])[0].get("message", "未知错误")
-                return None, f"API错误: {error}"
-
-    except urllib.error.HTTPError as e:
-        session["messages"].pop()
-        error_body = e.read().decode("utf-8")
-        return None, f"HTTP {e.code}: {e.reason}\n{error_body[:200]}"
+                err = result.get("errors", [{}])[0].get("message", "未知错误")
+                return None, f"API错误: {err}"
     except Exception as e:
         session["messages"].pop()
-        return None, f"请求异常: {str(e)}"
+        return None, f"请求失败: {str(e)}"
 
-# ========== 导出功能 ==========
+# ========== Export/Import ==========
 def export_session(session, fmt):
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    name = session["name"]
-
     if fmt == "json":
-        data = {
-            "name": name,
-            "model": session["model"],
-            "messages": session["messages"],
-            "created_at": session["created_at"]
-        }
-        return json.dumps(data, ensure_ascii=False, indent=2), f"{name}_{ts}.json"
-
+        data = {"name": session["name"], "model": session["model"], "messages": session["messages"]}
+        return json.dumps(data, ensure_ascii=False, indent=2), f"{session['name']}_{ts}.json"
     elif fmt == "md":
-        content = f"# {name}\n\n"
-        content += f"模型: {session['model']}\n\n"
-        for msg in session["messages"]:
-            if msg["role"] == "system":
-                continue
-            role = "🧑 用户" if msg["role"] == "user" else "🤖 AI"
-            content += f"### {role}\n\n{msg['content']}\n\n---\n\n"
-        return content, f"{name}_{ts}.md"
-
-    else:  # txt
-        content = f"会话: {name}\n模型: {session['model']}\n\n"
+        content = f"# {session['name']}\n\n"
         for msg in session["messages"]:
             if msg["role"] != "system":
-                content += f"[{msg['role']}]\n{msg['content']}\n\n"
-        return content, f"{name}_{ts}.txt"
-
-def export_all(fmt):
-    sessions = st.session_state.sessions
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    if fmt == "json":
-        data = {
-            "export_time": datetime.now().isoformat(),
-            "sessions": {sid: s for sid, s in sessions.items()}
-        }
-        return json.dumps(data, ensure_ascii=False, indent=2), f"all_{ts}.json", "application/json"
-
-    elif fmt == "zip":
-        buf = io.BytesIO()
-        with zipfile.ZipFile(buf, 'w') as zf:
-            for s in sessions.values():
-                data = json.dumps({
-                    "name": s["name"], "model": s["model"],
-                    "messages": s["messages"]
-                }, ensure_ascii=False, indent=2)
-                zf.writestr(f"{s['name']}_{s['id']}.json", data)
-        buf.seek(0)
-        return buf.getvalue(), f"all_{ts}.zip", "application/zip"
-
-    else:  # md_zip
-        buf = io.BytesIO()
-        with zipfile.ZipFile(buf, 'w') as zf:
-            for s in sessions.values():
-                content = f"# {s['name']}\n\n"
-                for msg in s["messages"]:
-                    if msg["role"] != "system":
-                        role = "用户" if msg["role"] == "user" else "AI"
-                        content += f"## {role}\n\n{msg['content']}\n\n"
-                zf.writestr(f"{s['name']}_{s['id']}.md", content)
-        buf.seek(0)
-        return buf.getvalue(), f"all_{ts}_md.zip", "application/zip"
+                role = "用户" if msg["role"] == "user" else "AI"
+                content += f"## {role}\n{msg['content']}\n\n"
+        return content, f"{session['name']}_{ts}.md"
+    else:
+        content = f"会话: {session['name']}\n\n"
+        for msg in session["messages"]:
+            if msg["role"] != "system":
+                content += f"[{msg['role']}] {msg['content']}\n\n"
+        return content, f"{session['name']}_{ts}.txt"
 
 def import_session(content):
     try:
         data = json.loads(content)
-
         if "sessions" in data:
-            # 批量导入
             count = 0
             for sid, sdata in data["sessions"].items():
                 new_id = str(uuid.uuid4())[:8]
                 st.session_state.sessions[new_id] = {
-                    "id": new_id,
-                    "name": f"导入_{sdata.get('name', '会话')}",
-                    "model": sdata.get("model", "Llama 3.3 70B"),
+                    "id": new_id, "name": f"导入_{sdata.get('name', '会话')}",
+                    "model": sdata.get("model", "Kimi K2.5"),
                     "messages": sdata.get("messages", []),
                     "created_at": datetime.now().isoformat(),
                     "updated_at": datetime.now().isoformat()
@@ -305,12 +248,10 @@ def import_session(content):
                 count += 1
             return True, f"导入 {count} 个会话"
         else:
-            # 单会话
             sid = str(uuid.uuid4())[:8]
             st.session_state.sessions[sid] = {
-                "id": sid,
-                "name": f"导入_{data.get('name', '会话')}",
-                "model": data.get("model", "Llama 3.3 70B"),
+                "id": sid, "name": f"导入_{data.get('name', '会话')}",
+                "model": data.get("model", "Kimi K2.5"),
                 "messages": data.get("messages", []),
                 "created_at": datetime.now().isoformat(),
                 "updated_at": datetime.now().isoformat()
@@ -327,148 +268,148 @@ session = get_session()
 # 侧边栏
 with st.sidebar:
     st.title("Kzz AI")
-
+    
     if st.button("➕ 新建会话", use_container_width=True, type="primary"):
         create_session(f"会话{len(st.session_state.sessions)+1}")
         st.rerun()
-
+    
     st.divider()
-    st.subheader(f"📂 历史会话 ({len(st.session_state.sessions)}个)")
-
+    
+    # 文件上传区域
+    st.subheader("📎 上传文件")
+    uploaded = st.file_uploader(
+        "支持代码/文本",
+        type=["py", "js", "html", "css", "java", "cpp", "c", "go", "rs", "php", "swift", "kt", "rb", "sql", "json", "xml", "yaml", "yml", "md", "txt", "csv"],
+        label_visibility="collapsed"
+    )
+    
+    if uploaded:
+        file_info, error = process_file(uploaded)
+        if error:
+            st.error(error)
+        else:
+            st.session_state.pending_file = file_info
+            st.success(f"✅ {file_info['name']} ({file_info['size']} 字符)")
+            if st.button("❌ 清除文件"):
+                st.session_state.pending_file = None
+                st.rerun()
+    
+    st.divider()
+    
     # 会话列表
+    st.subheader(f"📂 会话 ({len(st.session_state.sessions)}个)")
     for s in sorted(st.session_state.sessions.values(), key=lambda x: x["updated_at"], reverse=True):
-        with st.container():
-            c1, c2, c3 = st.columns([8, 1, 1])
-
-            with c1:
-                msg_count = len([m for m in s["messages"] if m["role"] != "system"])
-                label = f"{s['name']} ({msg_count})"
-                is_current = s["id"] == st.session_state.current_id
-
-                if st.button(label, key=f"btn_{s['id']}",
-                           type="primary" if is_current else "secondary",
-                           use_container_width=True):
-                    st.session_state.current_id = s["id"]
+        c1, c2, c3 = st.columns([8, 1, 1])
+        with c1:
+            cnt = len([m for m in s["messages"] if m["role"] != "system"])
+            label = f"{s['name']} ({cnt})"
+            is_cur = s["id"] == st.session_state.current_id
+            if st.button(label, key=f"btn_{s['id']}", type="primary" if is_cur else "secondary", use_container_width=True):
+                st.session_state.current_id = s["id"]
+                st.rerun()
+        with c2:
+            if st.button("✏️", key=f"ren_{s['id']}"):
+                st.session_state[f"editing_{s['id']}"] = True
+                st.rerun()
+        with c3:
+            if st.button("🗑️", key=f"del_{s['id']}"):
+                if len(st.session_state.sessions) > 1:
+                    delete_session(s["id"])
                     st.rerun()
-
-            with c2:
-                if st.button("/", key=f"ren_{s['id']}", help="重命名"):
-                    st.session_state[f"editing_{s['id']}"] = True
-                    st.rerun()
-
-            with c3:
-                if st.button("X", key=f"del_{s['id']}", help="删除"):
-                    if len(st.session_state.sessions) > 1:
-                        delete_session(s["id"])
+        
+        if st.session_state.get(f"editing_{s['id']}"):
+            with st.form(f"form_{s['id']}"):
+                new_name = st.text_input("新名称", s["name"], label_visibility="collapsed")
+                c1, c2 = st.columns(2)
+                with c1:
+                    if st.form_submit_button("✓"):
+                        rename_session(s["id"], new_name)
+                        del st.session_state[f"editing_{s['id']}"]
                         st.rerun()
-                    else:
-                        st.error("至少保留一个")
-
-            # 重命名输入
-            if st.session_state.get(f"editing_{s['id']}"):
-                with st.form(f"form_{s['id']}"):
-                    new_name = st.text_input("新名称", s["name"], label_visibility="collapsed")
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        if st.form_submit_button("✓"):
-                            rename_session(s["id"], new_name)
-                            del st.session_state[f"editing_{s['id']}"]
-                            st.rerun()
-                    with c2:
-                        if st.form_submit_button("✗"):
-                            del st.session_state[f"editing_{s['id']}"]
-                            st.rerun()
-
+                with c2:
+                    if st.form_submit_button("✗"):
+                        del st.session_state[f"editing_{s['id']}"]
+                        st.rerun()
+    
     st.divider()
-
+    
     # 导入导出
     with st.expander("📥 导入 / 📤 导出"):
-        # 导入
-        st.markdown("**📥 导入**")
-        uploaded = st.file_uploader("选 JSON 文件", type=["json"], label_visibility="collapsed")
-        if uploaded:
-            ok, msg = import_session(uploaded.read().decode("utf-8"))
+        uploaded_json = st.file_uploader("导入 JSON", type=["json"], label_visibility="collapsed")
+        if uploaded_json:
+            ok, msg = import_session(uploaded_json.read().decode("utf-8"))
             if ok:
                 st.success(msg)
                 st.rerun()
             else:
                 st.error(msg)
-
-        st.divider()
-
-        # 导出当前
+        
         if session:
-            st.markdown("**📤 导出当前**")
-            fmt = st.selectbox("格式", ["JSON", "Markdown", "TXT"], key="fmt_single")
+            fmt = st.selectbox("格式", ["JSON", "Markdown", "TXT"], key="fmt")
             content, fname = export_session(session, fmt.lower())
-            st.download_button("⬇️ 下载", content, fname, use_container_width=True)
-
-        st.divider()
-
-        # 导出全部
-        st.markdown(f"**📦 导出全部 ({len(st.session_state.sessions)}个)**")
-        fmt_all = st.selectbox("格式", ["JSON", "ZIP", "MD ZIP"], key="fmt_all")
-        fmt_map = {"JSON": "json", "ZIP": "zip", "MD ZIP": "md_zip"}
-        content, fname, mime = export_all(fmt_map[fmt_all])
-        st.download_button("⬇️ 下载全部", content, fname, mime, use_container_width=True)
-
-    # 统计
-    st.divider()
-    total = sum(len([m for m in s["messages"] if m["role"] != "system"]) 
-                for s in st.session_state.sessions.values())
-    st.caption(f"💡 {len(st.session_state.sessions)}会话 | {total}消息")
+            st.download_button("⬇️ 导出", content, fname, use_container_width=True)
+    
+    total_msgs = sum(len([m for m in s["messages"] if m["role"] != "system"]) for s in st.session_state.sessions.values())
+    st.caption(f"💡 {len(st.session_state.sessions)}会话 | {total_msgs}消息")
 
 # 主界面
 if session:
-    # 头部
     c1, c2, c3 = st.columns([3, 2, 1])
     with c1:
         st.header(f"💬 {session['name']}")
     with c2:
-        # 模型选择
-        current = session["model"]
-        options = list(MODELS.keys())
-        selected = st.selectbox("模型", options, index=options.index(current), label_visibility="collapsed")
-        if selected != current:
-            switch_model(session["id"], selected)
+        cur_model = session["model"]
+        opts = list(MODELS.keys())
+        sel = st.selectbox("模型", opts, index=opts.index(cur_model), label_visibility="collapsed")
+        if sel != cur_model:
+            switch_model(session["id"], sel)
             st.rerun()
     with c3:
         st.caption(MODELS[session["model"]].split("/")[-1][:20])
-
-    # 显示消息
+    
+    # 显示待上传文件
+    if st.session_state.pending_file:
+        f = st.session_state.pending_file
+        st.info(f"📎 待发送文件: {f['name']} ({f['type']}, {f['size']} 字符) - 在下方输入问题后一起发送")
+    
+    # 显示消息历史
     for msg in session["messages"]:
         if msg["role"] != "system":
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
-
-    # 输入
-    if prompt := st.chat_input("输入消息..."):
-        # 显示用户消息
+    
+    # 输入框
+    placeholder = "输入消息..." if not st.session_state.pending_file else "输入关于文件的问题（可选）..."
+    if prompt := st.chat_input(placeholder):
+        # 如果有待发送文件，合并发送
+        if st.session_state.pending_file:
+            full_prompt = format_file_message(st.session_state.pending_file, prompt)
+            st.session_state.pending_file = None  # 清除已发送文件
+        else:
+            full_prompt = prompt
+        
         with st.chat_message("user"):
-            st.markdown(prompt)
-
-        # 调用 API
+            st.markdown(prompt if not st.session_state.pending_file else f"📎 [带文件] {prompt}")
+        
         with st.chat_message("assistant"):
             with st.spinner("思考中..."):
-                reply, error = call_api(session, prompt)
-                if error:
-                    st.error(error)
+                reply, err = call_api(session, full_prompt)
+                if err:
+                    st.error(err)
                 else:
                     st.markdown(reply)
                     st.rerun()
-
-    # 底部
+    
+    # 底部操作
     st.divider()
     c1, c2 = st.columns([2, 4])
     with c1:
-        if st.button("🗑️ 清空对话"):
-            model_id = MODELS[session["model"]]
-            if needs_system_role(model_id):
-                session["messages"] = [{"role": "system", "content": "你是助手"}]
-            else:
-                session["messages"] = []
+        if st.button("🗑️ 清空"):
+            mid = MODELS[session["model"]]
+            session["messages"] = [{"role": "system", "content": "你是助手"}] if needs_system_role(mid) else []
             session["updated_at"] = datetime.now().isoformat()
+            st.session_state.pending_file = None
             st.rerun()
     with c2:
-        count = len([m for m in session["messages"] if m["role"] != "system"])
-        st.caption(f"📊 {count} 条消息")
+        cnt = len([m for m in session["messages"] if m["role"] != "system"])
+        st.caption(f"📊 {cnt} 条消息")
