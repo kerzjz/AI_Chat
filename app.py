@@ -370,8 +370,8 @@ def generate_title(text):
     clean_text = text.replace(chr(10), " ").strip()
     title = clean_text[:15] + ("..." if len(clean_text) > 15 else "")
     # 修复：使用原始字符串避免转义问题
-    title = re.sub(r"[<>`"
-]", "", title)
+    title = re.sub(r"[<>`\"\r\n]", "", title)
+
 
     return title if title else "新对话"
 
