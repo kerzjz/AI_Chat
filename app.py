@@ -5,7 +5,6 @@ import urllib.error
 from datetime import datetime
 import uuid
 import os
-import io
 import re
 
 # 页面配置
@@ -16,294 +15,95 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ========== 真正的 MDUI Material Design 3 样式 ==========
+# ========== MDUI 风格自定义 CSS ==========
 st.markdown("""
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-
 <style>
-    /* Material Design 3 设计令牌 */
     :root {
-        /* 主色调 - 紫色系 */
-        --md-sys-color-primary: #6750A4;
-        --md-sys-color-on-primary: #FFFFFF;
-        --md-sys-color-primary-container: #EADDFF;
-        --md-sys-color-on-primary-container: #21005D;
-
-        /* 次要色调 - 蓝绿色 */
-        --md-sys-color-secondary: #625B71;
-        --md-sys-color-on-secondary: #FFFFFF;
-        --md-sys-color-secondary-container: #E8DEF8;
-        --md-sys-color-on-secondary-container: #1D192B;
-
-        /* 表面色调 */
-        --md-sys-color-surface: #FFFBFE;
-        --md-sys-color-surface-variant: #E7E0EC;
-        --md-sys-color-on-surface: #1C1B1F;
-        --md-sys-color-on-surface-variant: #49454F;
-
-        /* 背景 */
-        --md-sys-color-background: #FFFBFE;
-        --md-sys-color-on-background: #1C1B1F;
-
-        /* 错误色调 */
-        --md-sys-color-error: #B3261E;
-        --md-sys-color-on-error: #FFFFFF;
-
-        /* 轮廓 */
-        --md-sys-color-outline: #79747E;
-        --md-sys-color-outline-variant: #CAC4D0;
-
-        /* 阴影层级 */
-        --md-sys-elevation-1: 0px 1px 2px rgba(0,0,0,0.3), 0px 1px 3px 1px rgba(0,0,0,0.15);
-        --md-sys-elevation-2: 0px 1px 2px rgba(0,0,0,0.3), 0px 2px 6px 2px rgba(0,0,0,0.15);
-        --md-sys-elevation-3: 0px 1px 3px rgba(0,0,0,0.3), 0px 4px 8px 3px rgba(0,0,0,0.15);
-
-        /* 圆角 */
-        --md-sys-shape-corner-small: 4px;
-        --md-sys-shape-corner-medium: 8px;
-        --md-sys-shape-corner-large: 12px;
-        --md-sys-shape-corner-extra-large: 28px;
-        --md-sys-shape-corner-full: 50%;
-
-        /* 字体 */
-        --md-sys-typescale-font-family: 'Roboto', sans-serif;
-    }
-
-    /* 全局样式 */
-    * {
-        font-family: var(--md-sys-typescale-font-family);
+        --primary-color: #6200ee;
+        --primary-light: #9d46ff;
+        --primary-dark: #0a00b6;
+        --secondary-color: #03dac6;
+        --background: #f5f5f5;
+        --surface: #ffffff;
+        --error: #b00020;
+        --on-primary: #ffffff;
+        --on-surface: #212121;
+        --divider: rgba(0,0,0,0.12);
     }
 
     .stApp {
-        background-color: var(--md-sys-color-background);
+        background-color: var(--background);
     }
 
-    /* 侧边栏 - MDUI Navigation Drawer 风格 */
     [data-testid="stSidebar"] {
-        background-color: var(--md-sys-color-surface);
-        border-right: 1px solid var(--md-sys-color-outline-variant);
-        box-shadow: var(--md-sys-elevation-1);
+        background-color: var(--surface);
+        border-right: 1px solid var(--divider);
     }
 
-    [data-testid="stSidebar"] .stButton > button {
-        border-radius: var(--md-sys-shape-corner-medium);
-        font-weight: 500;
-        letter-spacing: 0.5px;
+    .stButton > button {
+        border-radius: 4px;
         text-transform: none;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        font-weight: 500;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        transition: all 0.2s;
     }
 
-    /* Filled Button (Primary) */
+    .stButton > button:hover {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        transform: translateY(-1px);
+    }
+
     .stButton > button[kind="primary"] {
-        background-color: var(--md-sys-color-primary);
-        color: var(--md-sys-color-on-primary);
-        box-shadow: none;
+        background-color: var(--primary-color);
+        color: var(--on-primary);
     }
 
-    .stButton > button[kind="primary"]:hover {
-        background-color: #7F67BE;
-        box-shadow: var(--md-sys-elevation-1);
-    }
-
-    /* Outlined Button (Secondary) */
     .stButton > button[kind="secondary"] {
         background-color: transparent;
-        color: var(--md-sys-color-primary);
-        border: 1px solid var(--md-sys-color-outline);
+        color: var(--primary-color);
+        border: 1px solid rgba(0,0,0,0.12);
     }
 
-    .stButton > button[kind="secondary"]:hover {
-        background-color: rgba(103, 80, 164, 0.08);
-    }
-
-    /* Tonal Button */
-    .tonal-button {
-        background-color: var(--md-sys-color-secondary-container) !important;
-        color: var(--md-sys-color-on-secondary-container) !important;
-        border: none !important;
-    }
-
-    /* 会话列表项 - MDUI List 风格 */
-    .session-item {
-        display: flex;
-        align-items: center;
+    .chat-message {
         padding: 12px 16px;
-        margin: 4px 8px;
-        border-radius: var(--md-sys-shape-corner-medium);
-        cursor: pointer;
-        transition: all 0.2s;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .session-item:hover {
-        background-color: rgba(103, 80, 164, 0.08);
-    }
-
-    .session-item.active {
-        background-color: var(--md-sys-color-secondary-container);
-    }
-
-    .session-item.active::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 4px;
-        background-color: var(--md-sys-color-primary);
-        border-radius: 0 4px 4px 0;
-    }
-
-    /* 消息气泡 - MDUI Card 风格 */
-    .message-card {
-        padding: 16px;
         margin: 8px 0;
-        border-radius: var(--md-sys-shape-corner-large);
-        box-shadow: var(--md-sys-elevation-1);
-        animation: message-enter 0.3s ease-out;
-        position: relative;
+        border-radius: 12px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        animation: slideIn 0.3s ease-out;
     }
 
-    @keyframes message-enter {
-        from {
-            opacity: 0;
-            transform: translateY(8px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
     .user-message {
-        background-color: var(--md-sys-color-primary-container);
-        color: var(--md-sys-color-on-primary-container);
-        margin-left: 15%;
-        border-bottom-right-radius: var(--md-sys-shape-corner-small);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        margin-left: 20%;
+        border-bottom-right-radius: 4px;
     }
 
     .ai-message {
-        background-color: var(--md-sys-color-surface);
-        color: var(--md-sys-color-on-surface);
-        margin-right: 15%;
-        border: 1px solid var(--md-sys-color-outline-variant);
-        border-bottom-left-radius: var(--md-sys-shape-corner-small);
+        background: var(--surface);
+        color: var(--on-surface);
+        margin-right: 20%;
+        border: 1px solid var(--divider);
+        border-bottom-left-radius: 4px;
     }
 
-    /* 时间戳 - MDUI 风格 */
-    .message-timestamp {
+    .timestamp {
         font-size: 11px;
-        font-weight: 400;
-        opacity: 0.7;
-        margin-top: 8px;
-        display: flex;
-        align-items: center;
-        gap: 4px;
+        color: rgba(255,255,255,0.7);
+        margin-top: 4px;
     }
 
-    .user-message .message-timestamp {
-        color: var(--md-sys-color-on-primary-container);
+    .ai-message .timestamp {
+        color: rgba(0,0,0,0.38);
     }
 
-    .ai-message .message-timestamp {
-        color: var(--md-sys-color-on-surface-variant);
-    }
-
-    /* Material Icons */
-    .material-icons {
-        font-family: 'Material Icons';
-        font-weight: normal;
-        font-style: normal;
-        font-size: 20px;
-        line-height: 1;
-        letter-spacing: normal;
-        text-transform: none;
-        white-space: nowrap;
-        word-wrap: normal;
-        direction: ltr;
-        -webkit-font-feature-settings: 'liga';
-        -webkit-font-smoothing: antialiased;
-    }
-
-    /* FAB (Floating Action Button) */
-    .fab {
-        position: fixed;
-        bottom: 24px;
-        right: 24px;
-        width: 56px;
-        height: 56px;
-        border-radius: var(--md-sys-shape-corner-large);
-        background-color: var(--md-sys-color-primary-container);
-        color: var(--md-sys-color-on-primary-container);
-        box-shadow: var(--md-sys-elevation-3);
-        border: none;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-    }
-
-    .fab:hover {
-        box-shadow: 0px 6px 10px rgba(0,0,0,0.3), 0px 2px 3px rgba(0,0,0,0.15);
-        transform: scale(1.05);
-    }
-
-    /* 顶部 App Bar */
-    .app-bar {
-        background-color: var(--md-sys-color-surface);
-        color: var(--md-sys-color-on-surface);
-        padding: 16px 24px;
-        box-shadow: var(--md-sys-elevation-2);
-        border-bottom: 1px solid var(--md-sys-color-outline-variant);
-    }
-
-    /* Chip 风格 */
-    .chip {
-        display: inline-flex;
-        align-items: center;
-        padding: 6px 12px;
-        border-radius: var(--md-sys-shape-corner-small);
-        background-color: var(--md-sys-color-surface-variant);
-        color: var(--md-sys-color-on-surface-variant);
-        font-size: 12px;
-        font-weight: 500;
-        gap: 4px;
-    }
-
-    /* 输入框 - MDUI Text Field 风格 */
-    .stChatInput {
-        background-color: var(--md-sys-color-surface);
-        border-radius: var(--md-sys-shape-corner-extra-large);
-        box-shadow: var(--md-sys-elevation-2);
-        border: 1px solid var(--md-sys-color-outline);
-    }
-
-    /* 隐藏 Streamlit 默认元素 */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
-
-    /* 分割线 - MDUI Divider */
-    .divider {
-        height: 1px;
-        background-color: var(--md-sys-color-outline-variant);
-        margin: 16px 0;
-    }
-
-    /* 文件卡片 */
-    .file-card {
-        background-color: var(--md-sys-color-secondary-container);
-        color: var(--md-sys-color-on-secondary-container);
-        padding: 12px 16px;
-        border-radius: var(--md-sys-shape-corner-medium);
-        margin: 8px 0;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -324,6 +124,8 @@ MODELS = {
     "Qwen3 30B": "@cf/qwen/qwen3-30b-a3b-fp8",
     "Gemma 3 12B": "@cf/google/gemma-3-12b-it",
     "GLM-4.7 Flash": "@cf/zai-org/glm-4.7-flash",
+    "Qwen1.5 14B": "@cf/qwen/qwen1.5-14b-chat-awq",
+    "Gemma 7B": "@cf/google/gemma-7b-it-lora",
 }
 
 def needs_system_role(model_id):
@@ -331,103 +133,34 @@ def needs_system_role(model_id):
     no_system = ["deepseek", "qwen3", "qwq", "mistral", "llama"]
     return not any(x in lower for x in no_system)
 
-# ========== 增强的文件处理（支持更多格式）==========
-SUPPORTED_EXTENSIONS = {
-    # 代码文件
-    '.py': 'Python', '.js': 'JavaScript', '.ts': 'TypeScript',
-    '.html': 'HTML', '.htm': 'HTML', '.css': 'CSS',
-    '.java': 'Java', '.cpp': 'C++', '.c': 'C', '.h': 'C/C++ Header',
-    '.hpp': 'C++ Header', '.go': 'Go', '.rs': 'Rust',
-    '.php': 'PHP', '.swift': 'Swift', '.kt': 'Kotlin',
-    '.rb': 'Ruby', '.scala': 'Scala', '.r': 'R',
-    '.m': 'MATLAB', '.sh': 'Shell', '.bash': 'Bash',
-    '.ps1': 'PowerShell', '.sql': 'SQL', '.vue': 'Vue',
-    '.jsx': 'JSX', '.tsx': 'TSX', '.svelte': 'Svelte',
+def generate_title(text):
+    """自动生成标题"""
+    if not text:
+        return "新对话"
+    text = text.strip()
 
-    # 数据和配置
-    '.json': 'JSON', '.xml': 'XML', '.yaml': 'YAML', '.yml': 'YAML',
-    '.toml': 'TOML', '.ini': 'INI', '.conf': 'Config',
-    '.csv': 'CSV', '.tsv': 'TSV', '.log': 'Log',
+    # 尝试提取代码中的函数名或类名
+    if "def " in text:
+        match = re.search(r"def\s+(\w+)", text)
+        if match:
+            return f"函数 {match.group(1)}"
+    if "class " in text:
+        match = re.search(r"class\s+(\w+)", text)
+        if match:
+            return f"类 {match.group(1)}"
 
-    # 文档
-    '.md': 'Markdown', '.markdown': 'Markdown',
-    '.txt': 'Text', '.rtf': 'RTF',
-    '.tex': 'LaTeX',
+    # 前20个字符
+    title = text[:20].replace(chr(10), " ").strip()
+    if len(text) > 20:
+        title += "..."
 
-    # Office 文档（需要特殊处理）
-    '.docx': 'Word', '.xlsx': 'Excel', '.pptx': 'PowerPoint',
-
-    # 其他
-    '.dockerfile': 'Dockerfile', '.gitignore': 'Git Ignore',
-    '.cmake': 'CMake', '.makefile': 'Makefile',
-}
-
-def extract_text_from_office(file_obj, ext):
-    """尝试从 Office 文档提取文本"""
-    try:
-        if ext == '.docx':
-            try:
-                import docx
-                doc = docx.Document(file_obj)
-                return '\n'.join([para.text for para in doc.paragraphs if para.text])
-            except ImportError:
-                return None, "缺少 python-docx，请安装: pip install python-docx"
-
-        elif ext == '.xlsx':
-            try:
-                import openpyxl
-                wb = openpyxl.load_workbook(file_obj)
-                texts = []
-                for sheet in wb.worksheets[:3]:  # 只读前3个工作表
-                    texts.append(f"=== {sheet.title} ===")
-                    for row in sheet.iter_rows(max_row=100, values_only=True):  # 限制100行
-                        row_text = ' '.join([str(cell) for cell in row if cell])
-                        if row_text.strip():
-                            texts.append(row_text)
-                return '\n'.join(texts), None
-            except ImportError:
-                return None, "缺少 openpyxl，请安装: pip install openpyxl"
-
-        elif ext == '.pptx':
-            try:
-                from pptx import Presentation
-                prs = Presentation(file_obj)
-                texts = []
-                for i, slide in enumerate(prs.slides[:10], 1):  # 只读前10页
-                    texts.append(f"=== 幻灯片 {i} ===")
-                    for shape in slide.shapes:
-                        if hasattr(shape, "text") and shape.text.strip():
-                            texts.append(shape.text)
-                return '\n'.join(texts), None
-            except ImportError:
-                return None, "缺少 python-pptx，请安装: pip install python-pptx"
-
-        return None, f"不支持的 Office 格式: {ext}"
-    except Exception as e:
-        return None, f"提取失败: {str(e)}"
+    # 过滤特殊字符
+    title = re.sub(r"[<>`\r\n]", "", title)
+    return title if title else "新对话"
 
 def process_file(uploaded_file):
-    """增强版文件处理"""
     if uploaded_file is None:
         return None, None
-
-    filename = uploaded_file.name
-    ext = os.path.splitext(filename)[1].lower()
-
-    # 检查是否是 Office 文档
-    if ext in ['.docx', '.xlsx', '.pptx']:
-        content, error = extract_text_from_office(uploaded_file, ext)
-        if error:
-            return None, error
-        return {
-            "name": filename,
-            "ext": ext,
-            "type": SUPPORTED_EXTENSIONS.get(ext, "Document"),
-            "content": content,
-            "size": len(content)
-        }, None
-
-    # 尝试读取文本文件
     try:
         content = uploaded_file.read().decode("utf-8")
     except UnicodeDecodeError:
@@ -435,74 +168,56 @@ def process_file(uploaded_file):
             uploaded_file.seek(0)
             content = uploaded_file.read().decode("gbk")
         except:
-            # 尝试 latin-1（可以读取任何字节）
-            try:
-                uploaded_file.seek(0)
-                content = uploaded_file.read().decode("latin-1")
-            except:
-                return None, f"无法解码文件 {filename}，请确保是文本文件"
+            return None, "编码错误"
 
-    file_type = SUPPORTED_EXTENSIONS.get(ext, "Text")
+    ext = os.path.splitext(uploaded_file.name)[1].lower()
+    code_types = {".py": "Python", ".js": "JS", ".html": "HTML", ".java": "Java", 
+                  ".cpp": "C++", ".go": "Go", ".rs": "Rust", ".md": "Markdown", ".txt": "Text"}
 
     return {
-        "name": filename,
+        "name": uploaded_file.name,
         "ext": ext,
-        "type": file_type,
+        "type": code_types.get(ext, "Text"),
         "content": content,
         "size": len(content)
     }, None
 
 def format_file_message(file_info, user_text=""):
-    """格式化文件内容为消息"""
     name = file_info["name"]
     content = file_info["content"]
     ftype = file_info["type"]
 
-    max_len = 4000  # 减少长度以适应更多模型
+    max_len = 5000
     if len(content) > max_len:
-        content = content[:max_len] + f"\n... [内容已截断，原文件共 {len(file_info['content'])} 字符]"
+        content = content[:max_len] + f"\n... [截断，共 {len(file_info['content'])} 字符]"
 
     lang = file_info["ext"].replace(".", "") if file_info["ext"] else "text"
-    prompt = f"我上传了一个 {ftype} 文件 `{name}`，内容如下：\n\n```{lang}\n{content}\n```"
+    prompt = f"文件 `{name}` ({ftype}):\n```{lang}\n{content}\n```"
     if user_text:
-        prompt += f"\n\n我的问题：{user_text}"
-    else:
-        prompt += "\n\n请分析这个文件的内容。"
+        prompt += f"\n\n问题：{user_text}"
     return prompt
 
-# ========== Session 管理（修复导入问题）==========
 def init_session():
-    """初始化 session state - 修复版"""
-    # 使用更健壮的初始化方式
-    defaults = {
-        "sessions": {},
-        "current_id": None,
-        "pending_file": None,
-        "edit_mode": None,
-        "show_new": False,
-        "import_key": 0  # 用于重置文件上传器
-    }
+    if "sessions" not in st.session_state:
+        st.session_state.sessions = {}
+    if "current_id" not in st.session_state:
+        st.session_state.current_id = None
+    if "pending_file" not in st.session_state:
+        st.session_state.pending_file = None
+    if "edit_mode" not in st.session_state:
+        st.session_state.edit_mode = None
+    if "show_new" not in st.session_state:
+        st.session_state.show_new = False
 
-    for key, value in defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = value
-
-    # 确保至少有一个会话
     if not st.session_state.sessions:
         create_session("开始对话")
 
 def create_session(name, model="Kimi K2.5"):
-    """创建新会话"""
     sid = str(uuid.uuid4())[:8]
     model_id = MODELS[model]
-
     messages = []
     if needs_system_role(model_id):
-        messages.append({
-            "role": "system", 
-            "content": "你是智能助手，请用中文回答。",
-            "time": datetime.now().isoformat()
-        })
+        messages.append({"role": "system", "content": "你是智能助手", "time": datetime.now().isoformat()})
 
     st.session_state.sessions[sid] = {
         "id": sid,
@@ -516,11 +231,9 @@ def create_session(name, model="Kimi K2.5"):
     return sid
 
 def get_session():
-    """获取当前会话"""
     cid = st.session_state.current_id
     if cid and cid in st.session_state.sessions:
         return st.session_state.sessions[cid]
-
     if st.session_state.sessions:
         first = list(st.session_state.sessions.keys())[0]
         st.session_state.current_id = first
@@ -528,7 +241,6 @@ def get_session():
     return None
 
 def delete_session(sid):
-    """删除会话"""
     if sid in st.session_state.sessions:
         del st.session_state.sessions[sid]
         if st.session_state.current_id == sid:
@@ -536,22 +248,15 @@ def delete_session(sid):
                 st.session_state.current_id = list(st.session_state.sessions.keys())[0]
             else:
                 create_session("新会话")
-        return True
-    return False
 
 def rename_session(sid, new_name):
-    """重命名会话"""
     if sid in st.session_state.sessions and new_name.strip():
         st.session_state.sessions[sid]["name"] = new_name.strip()
         st.session_state.sessions[sid]["updated_at"] = datetime.now().isoformat()
-        return True
-    return False
 
 def switch_model(sid, new_model):
-    """切换模型"""
     if sid not in st.session_state.sessions:
         return
-
     session = st.session_state.sessions[sid]
     old_id = MODELS[session["model"]]
     new_id = MODELS[new_model]
@@ -562,95 +267,49 @@ def switch_model(sid, new_model):
     session["model"] = new_model
     if old_sys != new_sys:
         if new_sys:
-            session["messages"] = [{
-                "role": "system", 
-                "content": "你是智能助手，请用中文回答。",
-                "time": datetime.now().isoformat()
-            }]
+            session["messages"] = [{"role": "system", "content": "你是智能助手", "time": datetime.now().isoformat()}]
         else:
             session["messages"] = []
     session["updated_at"] = datetime.now().isoformat()
 
-def generate_title(text):
-    """从文本生成标题"""
-    if not text:
-        return "新对话"
-
-    text = text.strip()
-
-    # 尝试提取代码中的函数名或类名
-    patterns = [
-        (r"def\s+(\w+)", "函数 {}"),
-        (r"class\s+(\w+)", "类 {}"),
-        (r"function\s+(\w+)", "函数 {}"),
-    ]
-
-    for pattern, template in patterns:
-        match = re.search(pattern, text)
-        if match:
-            return template.format(match.group(1))
-
-    # 尝试提取文件相关
-    if "文件" in text or "`" in text:
-        file_match = re.search(r"`([^`]+)`", text)
-        if file_match:
-            return f"文件 {file_match.group(1)[:15]}"
-
-    # 取前15个字符
-    clean_text = text.replace(chr(10), " ").strip()
-    title = clean_text[:15] + ("..." if len(clean_text) > 15 else "")
-    title = re.sub(r"[<>`"\r\n]", "", title)
-
-    return title if title else "新对话"
-
-# ========== API 调用 ==========
 @st.cache_data(ttl=3600)
 def get_api_url(model):
     return f"https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai/run/{model}"
 
 def call_api(session, text, auto_title=False):
-    """调用 API"""
     try:
         model_id = MODELS[session["model"]]
         url = get_api_url(model_id)
 
         now = datetime.now().isoformat()
-        session["messages"].append({
-            "role": "user", 
-            "content": text, 
-            "time": now
-        })
+        session["messages"].append({"role": "user", "content": text, "time": now})
 
-        # 自动重命名（如果是第一条消息）
-        if auto_title:
+        # 自动重命名
+        if auto_title and session["name"] in ["开始对话", "新会话", "默认会话"]:
             user_msgs = [m for m in session["messages"] if m["role"] == "user"]
-            if len(user_msgs) == 1 and session["name"] in ["开始对话", "新会话", "默认会话"]:
+            if len(user_msgs) == 1:
                 session["name"] = generate_title(text)
 
-        # 构建 payload（移除 time 字段）
-        payload_msgs = [{"role": m["role"], "content": m["content"]} 
-                       for m in session["messages"]]
+        # 构建 payload（去掉 time 字段）
+        payload_msgs = [{"role": m["role"], "content": m["content"]} for m in session["messages"]]
         data = json.dumps({"messages": payload_msgs}).encode()
 
         req = urllib.request.Request(
             url, data=data,
-            headers={"Authorization": f"Bearer {TOKEN}", 
-                    "Content-Type": "application/json"},
+            headers={"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"},
             method="POST"
         )
 
         with urllib.request.urlopen(req, timeout=60) as resp:
             result = json.loads(resp.read().decode())
-
             if result.get("success"):
-                res = result.get("result", {})
-                reply = res.get("response")
-                if not reply and "choices" in res:
-                    reply = res["choices"][0]["message"]["content"]
+                reply = result.get("result", {}).get("response")
+                if not reply and "choices" in result.get("result", {}):
+                    reply = result["result"]["choices"][0]["message"]["content"]
 
                 if reply:
                     session["messages"].append({
-                        "role": "assistant",
+                        "role": "assistant", 
                         "content": reply,
                         "time": datetime.now().isoformat()
                     })
@@ -663,33 +322,23 @@ def call_api(session, text, auto_title=False):
                 session["messages"].pop()
                 err = result.get("errors", [{}])[0].get("message", "未知错误")
                 return None, f"API错误: {err}"
-
     except Exception as e:
         session["messages"].pop()
         return None, str(e)
 
-# ========== 导入导出（修复版）==========
 def export_session(session, fmt):
-    """导出会话"""
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-
     if fmt == "json":
         data = {
             "version": "2.0",
-            "export_time": datetime.now().isoformat(),
             "name": session["name"],
             "model": session["model"],
             "created_at": session.get("created_at", ""),
             "messages": session["messages"]
         }
         return json.dumps(data, ensure_ascii=False, indent=2), f"{session['name']}_{ts}.json"
-
     elif fmt == "md":
         content = f"# {session['name']}\n\n"
-        content += f"> 模型: {session['model']}\n"
-        content += f"> 导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n"
-        content += "---\n\n"
-
         for msg in session["messages"]:
             if msg["role"] == "system":
                 continue
@@ -697,44 +346,31 @@ def export_session(session, fmt):
             if "time" in msg:
                 try:
                     dt = datetime.fromisoformat(msg["time"])
-                    time_str = dt.strftime("%m-%d %H:%M")
+                    time_str = f" *{dt.strftime('%H:%M')}*"
                 except:
                     pass
-
-            if msg["role"] == "user":
-                content += f"### 👤 用户 {time_str}\n\n{msg['content']}\n\n"
-            else:
-                content += f"### 🤖 AI {time_str}\n\n{msg['content']}\n\n"
-            content += "---\n\n"
-
+            role = "**用户**" if msg["role"] == "user" else "**AI**"
+            content += f"{role}{time_str}:\n{msg['content']}\n\n---\n\n"
         return content, f"{session['name']}_{ts}.md"
-
-    else:  # txt
-        content = f"会话: {session['name']}\n模型: {session['model']}\n\n"
+    else:
+        content = f"会话: {session['name']}\n\n"
         for msg in session["messages"]:
             if msg["role"] != "system":
-                time_str = msg.get("time", "")[:16].replace("T", " ")
-                content += f"[{msg['role']}] {time_str}\n{msg['content']}\n\n"
+                content += f"[{msg['role']}] {msg.get('time', '')}\n{msg['content']}\n\n"
         return content, f"{session['name']}_{ts}.txt"
 
 def import_session(file_content):
-    """修复版导入功能 - 更健壮的错误处理"""
     try:
         data = json.loads(file_content)
 
-        # 确保 messages 有时间戳
-        def ensure_time(msg):
-            if "time" not in msg:
-                msg["time"] = datetime.now().isoformat()
-            return msg
-
-        # 批量导入
         if "sessions" in data:
             count = 0
             for sid, sdata in data["sessions"].items():
                 new_id = str(uuid.uuid4())[:8]
-                msgs = [ensure_time(m) for m in sdata.get("messages", [])]
-
+                msgs = sdata.get("messages", [])
+                for m in msgs:
+                    if "time" not in m:
+                        m["time"] = datetime.now().isoformat()
                 st.session_state.sessions[new_id] = {
                     "id": new_id,
                     "name": sdata.get("name", f"导入_{count+1}"),
@@ -744,11 +380,13 @@ def import_session(file_content):
                     "updated_at": datetime.now().isoformat()
                 }
                 count += 1
-            return True, f"成功导入 {count} 个会话"
+            return True, f"导入 {count} 个会话"
 
-        # 单会话导入
         sid = str(uuid.uuid4())[:8]
-        msgs = [ensure_time(m) for m in data.get("messages", [])]
+        msgs = data.get("messages", [])
+        for m in msgs:
+            if "time" not in m:
+                m["time"] = datetime.now().isoformat()
 
         st.session_state.sessions[sid] = {
             "id": sid,
@@ -759,42 +397,33 @@ def import_session(file_content):
             "updated_at": datetime.now().isoformat()
         }
         st.session_state.current_id = sid
-        return True, "成功导入 1 个会话"
-
-    except json.JSONDecodeError as e:
-        return False, f"JSON 格式错误: {str(e)}"
+        return True, "导入 1 个会话"
     except Exception as e:
         return False, f"导入失败: {str(e)}"
 
-# ========== MDUI 风格界面 ==========
+# ========== UI ==========
 init_session()
 session = get_session()
 
-# 侧边栏 - MDUI Navigation Drawer 风格
 with st.sidebar:
-    # Logo
     st.markdown("""
-    <div style="padding: 16px; text-align: center;">
-        <span class="material-icons" style="font-size: 48px; color: #6750A4;">smart_toy</span>
-        <h2 style="color: #1C1B1F; margin: 8px 0 0 0; font-weight: 400;">Kzz AI</h2>
-        <p style="color: #49454F; font-size: 12px; margin: 4px 0 0 0;">智能对话助手</p>
+    <div style="padding: 16px 0; text-align: center;">
+        <h2 style="color: #6200ee; margin: 0;">🤖 Kzz AI</h2>
+        <p style="color: rgba(0,0,0,0.6); font-size: 12px;">智能对话助手</p>
     </div>
-    <div class="divider"></div>
     """, unsafe_allow_html=True)
 
-    # 新建按钮 - Filled Button
     if st.button("➕ 新建对话", use_container_width=True, type="primary"):
         st.session_state.show_new = True
         st.rerun()
 
-    # 新建会话表单
     if st.session_state.show_new:
-        with st.form("new_session_form"):
-            name = st.text_input("会话名称（可选）", placeholder="留空自动生成标题")
+        with st.form("new_session"):
+            name = st.text_input("名称（可选）", placeholder="留空自动生成")
             cols = st.columns([1, 1])
             with cols[0]:
                 if st.form_submit_button("✓ 创建", use_container_width=True):
-                    create_session(name if name else "新会话")
+                    create_session(name if name else "新对话")
                     st.session_state.show_new = False
                     st.rerun()
             with cols[1]:
@@ -802,39 +431,28 @@ with st.sidebar:
                     st.session_state.show_new = False
                     st.rerun()
 
-    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
+    st.divider()
 
-    # 文件上传 - MDUI Card 风格
     with st.expander("📎 上传文件"):
-        # 显示支持的格式
-        st.caption("支持: 代码、文本、Office(docx/xlsx/pptx)")
-
         uploaded = st.file_uploader(
-            "选择文件",
-            type=list(SUPPORTED_EXTENSIONS.keys())[1:],  # 去掉 .
-            label_visibility="collapsed",
-            key=f"file_uploader_{st.session_state.import_key}"  # 使用 key 重置
+            "选择",
+            type=["py", "js", "html", "java", "cpp", "go", "rs", "md", "txt", "json"],
+            label_visibility="collapsed"
         )
-
         if uploaded:
-            with st.spinner("读取中..."):
-                info, error = process_file(uploaded)
-
-            if error:
-                st.error(f"❌ {error}")
+            info, err = process_file(uploaded)
+            if err:
+                st.error(err)
             else:
                 st.session_state.pending_file = info
-                st.success(f"✅ {info['name']} ({info['type']}, {info['size']} 字符)")
-
-                # 清除按钮
-                if st.button("❌ 清除文件", key="clear_pending"):
+                st.success(f"✓ {info['name']}")
+                if st.button("清除"):
                     st.session_state.pending_file = None
                     st.rerun()
 
-    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
+    st.divider()
 
-    # 会话列表 - MDUI List 风格
-    st.markdown(f"<p style='color: #49454F; font-size: 12px; font-weight: 500; margin: 8px 16px;'>📂 会话列表 ({len(st.session_state.sessions)})</p>", unsafe_allow_html=True)
+    st.subheader(f"📂 会话列表 ({len(st.session_state.sessions)})")
 
     sessions_sorted = sorted(
         st.session_state.sessions.values(),
@@ -846,188 +464,93 @@ with st.sidebar:
         is_active = s["id"] == st.session_state.current_id
         msg_count = len([m for m in s["messages"] if m["role"] != "system"])
 
-        # 使用 container 创建 MDUI List Item
-        with st.container():
-            cols = st.columns([10, 1, 1])
+        cols = st.columns([6, 1, 1])
 
-            # 会话按钮
-            with cols[0]:
-                btn_type = "primary" if is_active else "secondary"
-                label = f"{s['name'][:12]}{'...' if len(s['name']) > 12 else ''} ({msg_count})"
+        with cols[0]:
+            btn_type = "primary" if is_active else "secondary"
+            label = f"{s['name'][:15]}{'...' if len(s['name']) > 15 else ''} ({msg_count})"
 
-                if st.button(
-                    label, 
-                    key=f"sess_{s['id']}_{idx}",  # 唯一 key
-                    type=btn_type,
-                    use_container_width=True,
-                    help=f"创建于: {s.get('created_at', '未知')[:10]}"
-                ):
-                    st.session_state.current_id = s["id"]
+            if st.button(label, key=f"sess_btn_{s['id']}_{idx}", 
+                      type=btn_type, use_container_width=True):
+                st.session_state.current_id = s["id"]
+                st.rerun()
+
+        with cols[1]:
+            if st.button("✏️", key=f"rename_{s['id']}_{idx}", help="重命名"):
+                st.session_state.edit_mode = s["id"]
+                st.rerun()
+
+        with cols[2]:
+            can_delete = len(st.session_state.sessions) > 1
+            if st.button("🗑️", key=f"delete_{s['id']}_{idx}",
+                       disabled=not can_delete):
+                if can_delete:
+                    delete_session(s["id"])
                     st.rerun()
 
-            # 重命名按钮
-            with cols[1]:
-                if st.button(
-                    "✏️", 
-                    key=f"rename_{s['id']}_{idx}",
-                    help="重命名会话"
-                ):
-                    st.session_state.edit_mode = s["id"]
-                    st.rerun()
-
-            # 删除按钮
-            with cols[2]:
-                can_delete = len(st.session_state.sessions) > 1
-                if st.button(
-                    "🗑️", 
-                    key=f"delete_{s['id']}_{idx}",
-                    help="删除会话" if can_delete else "至少保留一个会话",
-                    disabled=not can_delete
-                ):
-                    if can_delete:
-                        delete_session(s["id"])
+        if st.session_state.edit_mode == s["id"]:
+            with st.form(f"rename_form_{s['id']}"):
+                new_name = st.text_input("新名称", value=s["name"], label_visibility="collapsed")
+                c1, c2 = st.columns([1, 1])
+                with c1:
+                    if st.form_submit_button("保存", use_container_width=True):
+                        rename_session(s["id"], new_name)
+                        st.session_state.edit_mode = None
+                        st.rerun()
+                with c2:
+                    if st.form_submit_button("取消", use_container_width=True):
+                        st.session_state.edit_mode = None
                         st.rerun()
 
-            # 重命名输入框
-            if st.session_state.edit_mode == s["id"]:
-                with st.form(f"rename_form_{s['id']}"):
-                    new_name = st.text_input(
-                        "新名称", 
-                        value=s["name"],
-                        label_visibility="collapsed"
-                    )
-                    c1, c2 = st.columns([1, 1])
-                    with c1:
-                        if st.form_submit_button("保存", use_container_width=True):
-                            rename_session(s["id"], new_name)
-                            st.session_state.edit_mode = None
-                            st.rerun()
-                    with c2:
-                        if st.form_submit_button("取消", use_container_width=True):
-                            st.session_state.edit_mode = None
-                            st.rerun()
+    st.divider()
 
-    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
-
-    # 导入导出 - MDUI Card 风格
     with st.expander("💾 导入/导出"):
-        # 导入 - 修复版
-        st.markdown("**📥 导入会话**")
+        st.markdown("**📥 导入**")
+        import_file = st.file_uploader("选 JSON", type=["json"], key="import_uploader", label_visibility="collapsed")
+        if import_file:
+            content = import_file.read().decode("utf-8")
+            success, msg = import_session(content)
+            if success:
+                st.success(msg)
+                st.rerun()
+            else:
+                st.error(msg)
 
-        # 使用 dynamic key 来重置上传器
-        import_key = f"import_uploader_{st.session_state.import_key}"
-        import_file = st.file_uploader(
-            "选择 JSON 文件",
-            type=["json"],
-            key=import_key,
-            label_visibility="collapsed"
-        )
-
-        if import_file is not None:
-            try:
-                content = import_file.read().decode("utf-8")
-                success, msg = import_session(content)
-
-                if success:
-                    st.success(f"✅ {msg}")
-                    # 增加 key 以重置上传器
-                    st.session_state.import_key += 1
-                    st.rerun()
-                else:
-                    st.error(f"❌ {msg}")
-                    st.session_state.import_key += 1
-            except Exception as e:
-                st.error(f"❌ 读取文件失败: {str(e)}")
-                st.session_state.import_key += 1
-
-        st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
-
-        # 导出当前
         if session:
-            st.markdown("**📤 导出当前**")
+            st.markdown("**📤 导出**")
             fmt = st.selectbox("格式", ["JSON", "Markdown", "TXT"], key="export_fmt")
             content, fname = export_session(session, fmt.lower())
+            st.download_button("下载", content, fname, use_container_width=True)
 
-            mime = "application/json" if fmt == "JSON" else "text/plain"
-            st.download_button(
-                "⬇️ 下载",
-                content,
-                fname,
-                mime=mime,
-                use_container_width=True
-            )
+    total_msgs = sum(len([m for m in s["messages"] if m["role"] != "system"]) 
+                    for s in st.session_state.sessions.values())
+    st.caption(f"💡 {len(st.session_state.sessions)} 会话，{total_msgs} 消息")
 
-    # 底部统计
-    total_msgs = sum(
-        len([m for m in s["messages"] if m["role"] != "system"])
-        for s in st.session_state.sessions.values()
-    )
-    st.markdown(
-        f"<p style='color: #79747E; font-size: 11px; text-align: center; margin-top: 16px;'>
-        💡 {len(st.session_state.sessions)} 个会话 · {total_msgs} 条消息
-        </p>",
-        unsafe_allow_html=True
-    )
-
-# 主界面 - MDUI App Bar + Content
 if session:
-    # 顶部 App Bar
-    st.markdown(f"""
-    <div class="app-bar">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h3 style="margin: 0; font-weight: 400; color: #1C1B1F;">
-                💬 {session['name']}
-            </h3>
-            <span class="chip">
-                <span class="material-icons" style="font-size: 16px;">memory</span>
-                {len([m for m in session['messages'] if m['role']!='system'])} 条消息
-            </span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"<h3>💬 {session['name']}</h3>", unsafe_allow_html=True)
 
-    # 模型选择器
     cols = st.columns([3, 1])
     with cols[0]:
-        current = session["model"]
-        options = list(MODELS.keys())
-        selected = st.selectbox(
-            "选择模型",
-            options,
-            index=options.index(current),
-            label_visibility="collapsed"
-        )
-        if selected != current:
-            switch_model(session["id"], selected)
+        cur = session["model"]
+        opts = list(MODELS.keys())
+        sel = st.selectbox("模型", opts, index=opts.index(cur), label_visibility="collapsed")
+        if sel != cur:
+            switch_model(session["id"], sel)
             st.rerun()
-
     with cols[1]:
-        model_id = MODELS[session["model"]]
-        st.caption(f"📦 {model_id.split('/')[-1][:20]}")
+        st.caption(f"📊 {len([m for m in session['messages'] if m['role']!='system'])} 条")
 
-    # 待发送文件提示
     if st.session_state.pending_file:
         f = st.session_state.pending_file
-        st.markdown(f"""
-        <div class="file-card">
-            <span class="material-icons">description</span>
-            <div>
-                <div style="font-weight: 500;">{f['name']}</div>
-                <div style="font-size: 12px; opacity: 0.8;">{f['type']} · {f['size']} 字符</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.info(f"📎 已就绪: {f['name']} ({f['size']} 字符)")
 
-    # 消息列表
     for msg in session["messages"]:
         if msg["role"] == "system":
             continue
 
         is_user = msg["role"] == "user"
         css_class = "user-message" if is_user else "ai-message"
-        icon = "👤" if is_user else "🤖"
 
-        # 格式化时间
         time_str = ""
         if "time" in msg:
             try:
@@ -1038,93 +561,47 @@ if session:
 
         with st.chat_message(msg["role"]):
             st.markdown(f"""
-            <div class="message-card {css_class}">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-weight: 500;">
-                    {icon} {"你" if is_user else "AI"}
-                </div>
+            <div class="chat-message {css_class}">
                 {msg['content']}
-                <div class="message-timestamp">
-                    <span class="material-icons" style="font-size: 12px;">schedule</span>
-                    {time_str}
-                </div>
+                <div class="timestamp">{time_str}</div>
             </div>
             """, unsafe_allow_html=True)
 
-    # 输入框
-    placeholder = "输入消息..."
-    if st.session_state.pending_file:
-        placeholder = "输入关于文件的问题（可选）..."
-
+    placeholder = "输入消息..." + (" (将附带文件)" if st.session_state.pending_file else "")
     if prompt := st.chat_input(placeholder):
-        # 构建完整提示
         if st.session_state.pending_file:
             full_prompt = format_file_message(st.session_state.pending_file, prompt)
             st.session_state.pending_file = None
-            display_prompt = f"📎 [带文件] {prompt}"
         else:
             full_prompt = prompt
-            display_prompt = prompt
 
-        # 显示用户消息
         with st.chat_message("user"):
             st.markdown(f"""
-            <div class="message-card user-message">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-weight: 500;">
-                    👤 你
-                </div>
-                {display_prompt}
-                <div class="message-timestamp">
-                    <span class="material-icons" style="font-size: 12px;">schedule</span>
-                    {datetime.now().strftime("%m-%d %H:%M")}
-                </div>
+            <div class="chat-message user-message">
+                {prompt}
+                <div class="timestamp">{datetime.now().strftime('%m-%d %H:%M')}</div>
             </div>
             """, unsafe_allow_html=True)
 
-        # 调用 API
         with st.chat_message("assistant"):
             with st.spinner("思考中..."):
-                reply, error = call_api(session, full_prompt, auto_title=True)
-
-                if error:
-                    st.error(f"❌ {error}")
+                reply, err = call_api(session, full_prompt, auto_title=True)
+                if err:
+                    st.error(f"❌ {err}")
                 else:
                     st.markdown(f"""
-                    <div class="message-card ai-message">
-                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-weight: 500;">
-                            🤖 AI
-                        </div>
+                    <div class="chat-message ai-message">
                         {reply}
-                        <div class="message-timestamp">
-                            <span class="material-icons" style="font-size: 12px;">schedule</span>
-                            {datetime.now().strftime("%m-%d %H:%M")}
-                        </div>
+                        <div class="timestamp">{datetime.now().strftime('%m-%d %H:%M')}</div>
                     </div>
                     """, unsafe_allow_html=True)
                     st.rerun()
 
-    # 底部操作
-    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
-
-    col1, col2, col3 = st.columns([2, 2, 4])
-
-    with col1:
-        if st.button("🗑️ 清空对话", use_container_width=True, type="secondary"):
-            model_id = MODELS[session["model"]]
-            if needs_system_role(model_id):
-                session["messages"] = [{
-                    "role": "system",
-                    "content": "你是智能助手，请用中文回答。",
-                    "time": datetime.now().isoformat()
-                }]
-            else:
-                session["messages"] = []
-            session["updated_at"] = datetime.now().isoformat()
-            st.session_state.pending_file = None
-            st.rerun()
-
-    with col2:
-        count = len([m for m in session["messages"] if m["role"] != "system"])
-        st.caption(f"📊 {count} 条消息 · {session['model']}")
-
+    st.divider()
+    if st.button("🗑️ 清空对话", use_container_width=True):
+        mid = MODELS[session["model"]]
+        session["messages"] = [{"role": "system", "content": "你是助手", "time": datetime.now().isoformat()}] if needs_system_role(mid) else []
+        session["updated_at"] = datetime.now().isoformat()
+        st.rerun()
 else:
-    st.error("⚠️ 没有活动会话")
+    st.error("没有活动会话")
