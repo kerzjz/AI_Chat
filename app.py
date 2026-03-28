@@ -242,8 +242,7 @@ def extract_text_from_office(file_obj, ext):
         try:
             import docx
             doc = docx.Document(file_obj)
-            return '
-'.join([para.text for para in doc.paragraphs if para.text]), None
+            return '\n'.join([para.text for para in doc.paragraphs if para.text]), None
         except ImportError:
             return None, "缺少 python-docx"
         except Exception as e:
@@ -260,8 +259,7 @@ def extract_text_from_office(file_obj, ext):
                     row_text = ' '.join([str(cell) for cell in row if cell])
                     if row_text.strip():
                         texts.append(row_text)
-            return '
-'.join(texts), None
+            return '\n'.join(texts), None
         except ImportError:
             return None, "缺少 openpyxl"
         except Exception as e:
@@ -277,8 +275,7 @@ def extract_text_from_office(file_obj, ext):
                 for shape in slide.shapes:
                     if hasattr(shape, "text") and shape.text.strip():
                         texts.append(shape.text)
-            return '
-'.join(texts), None
+            return '\n'.join(texts), None
         except ImportError:
             return None, "缺少 python-pptx"
         except Exception as e:
