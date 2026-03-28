@@ -242,7 +242,8 @@ def extract_text_from_office(file_obj, ext):
         try:
             import docx
             doc = docx.Document(file_obj)
-            return '\n'.join([para.text for para in doc.paragraphs if para.text]), None
+            return '
+'.join([para.text for para in doc.paragraphs if para.text]), None
         except ImportError:
             return None, "缺少 python-docx"
         except Exception as e:
@@ -259,7 +260,8 @@ def extract_text_from_office(file_obj, ext):
                     row_text = ' '.join([str(cell) for cell in row if cell])
                     if row_text.strip():
                         texts.append(row_text)
-            return '\n'.join(texts), None
+            return '
+'.join(texts), None
         except ImportError:
             return None, "缺少 openpyxl"
         except Exception as e:
@@ -275,7 +277,8 @@ def extract_text_from_office(file_obj, ext):
                 for shape in slide.shapes:
                     if hasattr(shape, "text") and shape.text.strip():
                         texts.append(shape.text)
-            return '\n'.join(texts), None
+            return '
+'.join(texts), None
         except ImportError:
             return None, "缺少 python-pptx"
         except Exception as e:
@@ -332,14 +335,22 @@ def format_file_message(file_info, user_text=""):
 
     max_len = 4000
     if len(content) > max_len:
-        content = content[:max_len] + f"\n... [截断，共 {len(file_info['content'])} 字符]"
+        content = content[:max_len] + f"
+... [截断，共 {len(file_info['content'])} 字符]"
 
     lang = file_info["ext"].replace(".", "") if file_info["ext"] else "text"
-    prompt = f"文件 `{name}` ({ftype}):\n```{lang}\n{content}\n```"
+    prompt = f"文件 `{name}` ({ftype}):
+```{lang}
+{content}
+```"
     if user_text:
-        prompt += f"\n\n问题：{user_text}"
+        prompt += f"
+
+问题：{user_text}"
     else:
-        prompt += "\n\n请分析这个文件。"
+        prompt += "
+
+请分析这个文件。"
     return prompt
 
 def generate_title(text):
@@ -370,8 +381,8 @@ def generate_title(text):
     clean_text = text.replace(chr(10), " ").strip()
     title = clean_text[:15] + ("..." if len(clean_text) > 15 else "")
     # 修复：使用原始字符串避免转义问题
-    title = re.sub(r"[<>`\"\r\n]", "", title)
-
+    title = re.sub(r"[<>`"
+]", "", title)
 
     return title if title else "新对话"
 
