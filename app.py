@@ -332,22 +332,14 @@ def format_file_message(file_info, user_text=""):
 
     max_len = 4000
     if len(content) > max_len:
-        content = content[:max_len] + f"
-... [截断，共 {len(file_info['content'])} 字符]"
+        content = content[:max_len] + f"\n... [截断，共 {len(file_info['content'])} 字符]"
 
     lang = file_info["ext"].replace(".", "") if file_info["ext"] else "text"
-    prompt = f"文件 `{name}` ({ftype}):
-```{lang}
-{content}
-```"
+    prompt = f"文件 `{name}` ({ftype}):\n```{lang}\n{content}\n```"
     if user_text:
-        prompt += f"
-
-问题：{user_text}"
+        prompt += f"\n\n问题：{user_text}"
     else:
-        prompt += "
-
-请分析这个文件。"
+        prompt += "\n\n请分析这个文件。"
     return prompt
 
 def generate_title(text):
